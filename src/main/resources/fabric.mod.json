@@ -1,0 +1,37 @@
+{
+	"schemaVersion": 1,
+	"id": "ghostliferewind",
+	"version": "${version}",
+	"name": "Ghost Life Rewind",
+	"description": "Ghost Life Rewind Mod",
+	"authors": [
+		"Hunter9649"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/ghostliferewind/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"net.hunter9649.ghostliferewind.GhostLifeRewind"
+		],
+		"fabric-datagen": [
+			"net.hunter9649.ghostliferewind.GhostLifeRewindDataGenerator"
+		],
+		"client": [
+			"net.hunter9649.ghostliferewind.GhostLifeRewindClient"
+		]
+	},
+	"mixins": [
+		"ghostliferewind.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.18.4",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
