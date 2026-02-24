@@ -1,28 +1,59 @@
 package net.hunter9649.ghostliferewind;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.entity.event.v1.ServerEntityCombatEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
-import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.scoreboard.ServerScoreboard;
 import net.minecraft.scoreboard.Team;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.world.GameMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import net.minecraft.text.Text;
 
 import java.util.HashMap;
 import java.util.UUID;
+
+class GLPlayer {
+
+	private UUID id;
+	private int lives;
+	private boolean boogey = false;
+
+	public GLPlayer(UUID id, int lives) {
+		this.id = id;
+		this.lives = lives;
+	}
+
+	public int getLives() {
+		return lives;
+	}
+
+	public void setLives(int lives) {
+		this.lives = lives;
+	}
+
+	public boolean getBoogey() {
+		return boogey;
+	}
+
+	public void setBoogey(boolean boogey) {
+		this.boogey = boogey;
+	}
+}
 
 public class GhostLifeRewind implements ModInitializer {
 	public static final String MOD_ID = "ghostliferewind";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-	private final HashMap<UUID, Integer> lives = new HashMap<>();
+	private final HashMap<UUID, GLPlayer> players = new HashMap<>();
+
+	public static boolean isBloodMoon = true;
 
 	@Override
 	public void onInitialize() {
@@ -32,7 +63,7 @@ public class GhostLifeRewind implements ModInitializer {
 			ServerPlayerEntity player = handler.getPlayer();
 			UUID id = player.getUuid();
 
-			lives.putIfAbsent(id, 8); //set lives to 8
+			players.putIfAbsent(id, new GLPlayer(id, 5)); //create player profile and set lives to 5
 
 			updatePlayerColor(player, server);
 		});
@@ -41,23 +72,52 @@ public class GhostLifeRewind implements ModInitializer {
 		ServerPlayerEvents.COPY_FROM.register((oldPlayer, newPlayer, alive) -> {
 			if(!alive) {
 				UUID id = oldPlayer.getUuid();
-				int currentLives = lives.getOrDefault(id, 8);
+				GLPlayer playerProfile = players.get(id);
+				int currentLives = playerProfile.getLives();
 
 				currentLives -= 1;
-				lives.put(id,currentLives);
+				playerProfile.setLives(currentLives);
 
+				if (currentLives == 1) {
+					newPlayer.getAttributeInstance(EntityAttributes.MAX_HEALTH).setBaseValue(40.0f);
+					newPlayer.setHealth(40.0f);
+				}
 				if(currentLives <= 0) {
 					newPlayer.changeGameMode(GameMode.SPECTATOR);
 				}
 			}
 		});
 
+		//player kills
+		ServerEntityCombatEvents.AFTER_KILLED_OTHER_ENTITY.register((world, entity, livingEntity,damageSource) -> {
+			if (entity instanceof ServerPlayerEntity victim && livingEntity instanceof ServerPlayerEntity killer) {
+				// Now you know a player killed another player
+				killer.sendMessage(Text.literal("+1 Life").formatted(Formatting.GREEN), true);
+			}
+		});
+
+
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+				updatePlayerHearts(player);
 				updatePlayerColor(player, server);
 			}
 		});
 
+	}
+
+	private void updatePlayerHearts(ServerPlayerEntity player) {
+		UUID id = player.getUuid();
+
+		GLPlayer playerProfile = players.get(id);
+		int lifeCount = playerProfile.getLives();
+		float health = player.getHealth();
+
+		if (lifeCount > 1) {
+			player.getAttributeInstance(EntityAttributes.MAX_HEALTH).setBaseValue(20.0f);
+		} else if (lifeCount == 1) {
+			player.getAttributeInstance(EntityAttributes.MAX_HEALTH).setBaseValue(health);
+		}
 	}
 
 	private void updatePlayerColor(ServerPlayerEntity player, MinecraftServer server) {
@@ -65,7 +125,8 @@ public class GhostLifeRewind implements ModInitializer {
 		String playerName = player.getName().getString();
 		UUID id = player.getUuid();
 
-		int lifeCount = lives.getOrDefault(id, 8);
+		GLPlayer playerProfile = players.get(id);
+		int lifeCount = playerProfile.getLives();
 
 		// Determine which team the player should be in
 		String teamName;

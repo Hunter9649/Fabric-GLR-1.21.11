@@ -5,6 +5,10 @@
 	"mixins": [
 		"ExampleMixin"
 	],
+	"client": [
+		"FogRendererMixin",
+		"SkyRenderingMixin"
+	],
 	"injectors": {
 		"defaultRequire": 1
 	},
